@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- App theme for the game -->
+    <style name="Theme.CircuitCity_2" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <!-- Optional: full-screen look for your SurfaceView game -->
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <!-- If you use Material components, you can still add their colors here -->
+        <item name="colorPrimary">#000000</item>
+        <item name="colorAccent">#FFFFFF</item>
+    </style>
+</resources>

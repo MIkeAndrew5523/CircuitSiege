@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Circit City</string>
+    <string name="title_continue">Tap to Continue</string>
+    <string name="backstory_continue">Tap to Start Level 1</string>
+</resources>

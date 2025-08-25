@@ -1,0 +1,2 @@
+In the grid of Circuit City, walls are # and air is .
+You are @. Find the exit and avoid E.
