@@ -23,17 +23,27 @@ class Level(
     fun isKey(tx: Int, ty: Int)        = tileAt(tx, ty).key
     fun isCheckpoint(tx: Int, ty: Int) = tileAt(tx, ty).checkpoint
     fun isLockedDoor(tx: Int, ty: Int) = tileAt(tx, ty).lockedDoor
+    // Level.kt
+    fun isSolid(tx: Int, ty: Int): Boolean {
+        if (tx < 0 || ty < 0 || tx >= width || ty >= height) return true // treat OOB as solid
+        return tileAt(tx, ty).solid
+    }
+    fun isEnemySpawn(tx: Int, ty: Int): Boolean =
+        tileAt(tx, ty).enemySpawn
+
+
+
 
     /** Clear K or C at (tx,ty) and return that char, else '\u0000'. */
-    fun consumeAt(tx: Int, ty: Int): Char {
-        if (ty !in 0 until height || tx !in 0 until width) return '\u0000'
-        val c = grid[ty][tx]
-        if (c == 'K' || c == 'C') {
-            grid[ty][tx] = '.'
-            return c
+        fun consumeAt(tx: Int, ty: Int): Char {
+            if (ty !in 0 until height || tx !in 0 until width) return '\u0000'
+            val c = grid[ty][tx]
+            if (c == 'K' || c == 'C' || c == 'E') {
+                grid[ty][tx] = '.'
+                return c
+            }
+            return '\u0000'
         }
-        return '\u0000'
-    }
 
     // If (tx,ty) is a locked door 'd', open it (set to '.') and report success.
     fun unlockDoorAt(tx: Int, ty: Int): Boolean {

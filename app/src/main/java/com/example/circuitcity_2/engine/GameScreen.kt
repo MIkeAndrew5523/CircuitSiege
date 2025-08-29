@@ -8,7 +8,7 @@ import android.view.MotionEvent
 import com.example.circuitcity_2.input.TouchController
 import com.example.circuitcity_2.model.Level
 import com.example.circuitcity_2.model.Player
-import com.example.circuitcity_2.render.AsciiRenderer
+import com.example.circuitcity_2.render.SpriteRenderer
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -23,8 +23,11 @@ class GameScreen(
 
     private lateinit var level: Level
     private lateinit var player: Player
-    private val renderer = AsciiRenderer(context)
+    private val renderer = SpriteRenderer(context)
     private lateinit var camera: Camera2D
+
+    // Keep generic so you can mix enemy types later
+    private val enemies = mutableListOf<com.example.circuitcity_2.model.Enemy>()
 
     private val touch = TouchController()
 
@@ -50,7 +53,7 @@ class GameScreen(
     private var lifeFlash = 0f
     private var timeSec = 0f
     private val MAX_LIVES = 3
-
+    private var gameOverPending = false
 
     // ---------- HUD paints / overlays ----------
     private val overlay = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -86,13 +89,36 @@ class GameScreen(
             deadZoneX = 5.5f; deadZoneY = 2.8f; smooth = 10f
         }
         timeSec = 0f
-        // lives stays as-is across reloads unless you want to reset here
+
+        // --- spawn enemies here (optional example using 'E' tiles) ---
+
+        enemies.clear()
+        for (ty in 0 until level.height) {
+            for (tx in 0 until level.width) {
+                if (level.isEnemySpawn(tx, ty)) {
+                    enemies += com.example.circuitcity_2.model.SecurityBot(
+                        xTiles = tx + 0.10f,
+                        yTiles = ty - 0.10f,
+                        speed = 1.2f,
+                        patrolHalfRange = 3f
+                    )
+                    level.consumeAt(tx, ty) // clears 'E' to floor so renderer sees '.'
+                }
+            }
+        }
+
     }
 
     override fun update(dtSec: Float) {
         if (isDead) {
             deathTimer -= dtSec
-            if (deathTimer <= 0f) respawn()
+            if (deathTimer <= 0f) {
+                if (gameOverPending) {
+                    sm.set(GameOverScreen(context, sm, levelPath))
+                } else {
+                    respawn()
+                }
+            }
             return
         }
 
@@ -104,15 +130,35 @@ class GameScreen(
         if (doorFlash > 0f) doorFlash -= dtSec
         if (lifeFlash > 0f) lifeFlash -= dtSec
 
-        // input → physics (variable jump height via jumpHeld)
+        // -------- INPUT → PHYSICS --------
         val a = touch.poll()
+
+        // physics input (movement/jump)
         val input = Physics.Input(a.left, a.right, a.jumpPressed, a.jumpHeld)
         Physics.step(level, player, input, dtSec)
 
-        // clamp & camera
+        // Animation/facing signals for renderer (button-driven)
+        player.isMoving = a.left || a.right
+        if (a.left)  player.facingRight = false
+        if (a.right) player.facingRight = true
+
+        // clamp to level bounds
         player.x = min(max(0f, player.x), (level.width - player.w))
         player.y = min(max(0f, player.y), (level.height - player.h))
 
+        // ---------- ENEMIES: update & collide ----------
+        enemies.forEach { it.update(level, player, dtSec) }
+
+        if (invulnTimer <= 0f) {
+            val hit = enemies.any { e ->
+                val overlapX = e.x < player.x + player.w && player.x < e.x + e.w
+                val overlapY = e.y < player.y + player.h && player.y < e.y + e.h
+                overlapX && overlapY
+            }
+            if (hit) kill()
+        }
+
+        // ---------- CAMERA ----------
         val (tilesX, tilesY) = estimateViewTiles()
         camera.follow(
             player.x + player.w * 0.5f,
@@ -120,7 +166,7 @@ class GameScreen(
             tilesX, tilesY, dtSec
         )
 
-        // exit detection
+        // ---------- EXIT ----------
         if (level.hasExit()) {
             val cx = player.x + player.w * 0.5f
             val cy = player.y + player.h * 0.5f
@@ -150,7 +196,7 @@ class GameScreen(
             keys -= 1; doorFlash = 0.8f
         }
 
-        // hazards
+        // tile hazards
         if (invulnTimer <= 0f && isOnHazard()) {
             kill()
         }
@@ -161,7 +207,15 @@ class GameScreen(
         lastH = canvas.height
 
         touch.layout(lastW, lastH)
+
+        // world: tiles + player
         renderer.draw(canvas, level, player, camera.cx, camera.cy)
+
+
+        // world: enemies (placeholder cyan boxes until you add sprites)
+        renderer.drawEnemies(canvas, enemies, camera.cx, camera.cy, level)
+
+        // UI controls
         touch.drawOverlay(canvas)
 
         // death overlay
@@ -177,35 +231,33 @@ class GameScreen(
             canvas.drawText("Ouch! Respawning…", lastW/2f, lastH*0.45f, p)
         }
 
-        // invulnerability overlay (subtle blue tint)
+        // invulnerability overlay
         if (!isDead && invulnTimer > 0f) {
             overlay.color = Color.argb(70, 120, 160, 255)
             canvas.drawRect(0f, 0f, lastW.toFloat(), lastH.toFloat(), overlay)
         }
 
-// ---------- HUD ----------
+        // ---------- HUD ----------
         val padX = lastH * 0.03f
         val topY = lastH * 0.08f
         val rowGap = lastH * 0.055f
 
-// bigger fonts
         hudLeft.textSize = lastH * 0.045f
         hudRight.textSize = lastH * 0.045f
-        heartsPaint.textSize = lastH * 0.065f   // biggest: hearts
+        heartsPaint.textSize = lastH * 0.065f
 
-// Left: Keys
+        // Left: Keys
         canvas.drawText("Keys: $keys", padX, topY, hudLeft)
 
-// Right row 1: Time
+        // Right row 1: Time
         canvas.drawText("Time: ${formatTime(timeSec)}", lastW - padX, topY, hudRight)
 
-// Right row 2: Hearts (♥). Show hollow hearts (♡) for missing lives.
+        // Right row 2: Hearts (♥ / ♡)
         val solidHearts  = "\u2665".repeat(lives.coerceAtLeast(0))
         val hollowHearts = "\u2661".repeat((MAX_LIVES - lives).coerceAtLeast(0))
-        val hearts = (solidHearts + hollowHearts).ifEmpty { "\u2661" } // fallback
+        val hearts = (solidHearts + hollowHearts).ifEmpty { "\u2661" }
         canvas.drawText(hearts, lastW - padX, topY + rowGap, heartsPaint)
 
-// Center flashes (slightly bigger)
         if (keyFlash > 0f) {
             hudCenter.textSize = lastH * 0.06f
             canvas.drawText("+1 Key", lastW / 2f, topY + rowGap, hudCenter)
@@ -226,7 +278,6 @@ class GameScreen(
             hudCenterRed.textSize = lastH * 0.065f
             canvas.drawText("-1 life", lastW / 2f, topY + rowGap * 4f, hudCenterRed)
         }
-
     }
 
     override fun onTouch(ev: MotionEvent): Boolean { touch.onTouch(ev); return true }
@@ -252,15 +303,20 @@ class GameScreen(
         deathTimer = DEATH_FREEZE_SEC
         player.vx = 0f; player.vy = 0f
 
-        // HUD: lose a life on death (you can move this policy if you prefer)
         if (invulnTimer <= 0f) {
             lives = max(0, lives - 1)
             lifeFlash = 0.6f
+        }
+
+        // If no lives left, schedule game over (after freeze)
+        if (lives <= 0) {
+            gameOverPending = true
         }
     }
 
     private fun respawn() {
         isDead = false
+        gameOverPending = false
         player.x = respawnX; player.y = respawnY
         player.vx = 0f; player.vy = 0f
         invulnTimer = 1.2f
