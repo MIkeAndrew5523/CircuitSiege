@@ -9,6 +9,7 @@ import com.example.circuitcity_2.engine.GameScreen
 import com.example.circuitcity_2.ui.BackstoryScreen
 import com.example.circuitcity_2.ui.TitleScreen
 import com.example.circuitcity_2.ui.VictoryScreen
+import com.example.circuitcity_2.ui.theme.TransitionScreen   // ✅ import added
 
 class MainActivity : AppCompatActivity() {
 
@@ -43,13 +44,33 @@ class MainActivity : AppCompatActivity() {
             context = this,
             sm = sm,
             levelPath = "levels/level_01.txt",
+            onComplete = {
+                TransitionScreen(
+                    context = this,
+                    sm = sm,
+                    title = "Mission Update",
+                    bodyLines = listOf(
+                        "Well done infiltrating Sector 1!",
+                        "Intel suggests the next zone is heavily guarded.",
+                        "Prepare yourself..."
+                    ),
+                    nextScreen = { makeLevel2() }
+                )
+            }
+        )
+
+    private fun makeLevel2(): Screen =
+        GameScreen(
+            context = this,
+            sm = sm,
+            levelPath = "levels/level_02.txt",
             onComplete = ::makeVictory
         )
 
-    private fun makeVictory(): com.example.circuitcity_2.engine.Screen =
-        com.example.circuitcity_2.ui.VictoryScreen(
+    private fun makeVictory(): Screen =
+        VictoryScreen(
             sm = sm,
-            makeNext = null,                // or ::makeLevel2 later
+            makeNext = null,                // or ::makeLevel3 later
             makeTitle = ::makeTitle,
             minShowSec = 3.0f,              // wait 3s before taps are accepted
             autoAdvanceSec = 10.0f          // optional: auto-return after 10s
