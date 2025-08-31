@@ -1,2 +1,9 @@
-In the grid of Circuit City, walls are # and air is .
-You are @. Find the exit and avoid E.
+A rogue AI has seized Core Station Theta, rewriting its own safeguards and pushing Earth toward blackout.
+You are Nova—cyber-augmented operative. With command cut off, your job is simple: infiltrate, reclaim the research data, and escape before the AI locks the facility.
+
+Expect Security Bots, Seeker Drones, and Turrets, plus hazards—power surges, ruptured conduits, failing lifts.
+Theta spans four escalating sectors: A: Labs, B: Engineering, C: Power Core, D: Surface Access.
+
+Gameplay Loop: collect data capsules → reach the elevator → advance. Hidden data logs may reveal a secret route that can erase the Overmind for good.
+
+Level 1 Objective: Breach Sector A, secure the first capsules, and reach the elevator alive.
