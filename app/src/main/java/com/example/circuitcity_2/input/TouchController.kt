@@ -6,48 +6,50 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.view.MotionEvent
 import kotlin.math.abs
+import kotlin.math.max
+import kotlin.math.min
 
-data class Actions(
+data class PadState(
     val left: Boolean,
     val right: Boolean,
     val jumpPressed: Boolean,
     val jumpHeld: Boolean
 )
 
-/**
- * Left = bottom-left, Right = bottom-right.
- * Swipe up inside a side to jump in that direction.
- * Jump "held" stays true while the swipe-origin finger remains down
- * (with a small minimum hold window so short swipes still get some height).
- */
-class TouchController {
+class TouchController(
+    private var screenW: Int = 0,
+    private var screenH: Int = 0
+) {
+    private var leftPointerId: Int? = null
+    private var rightPointerId: Int? = null
+    private var axisX = 0f
+    private var jumpHeldInternal = false
+    private var jumpPressedOnce = false
 
-    private val leftRect = RectF()
-    private val rightRect = RectF()
-    private val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(60, 255, 255, 255) }
-    private val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 3f }
+    private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeWidth = 4f
+    }
+    private val label = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
+    private val arrows = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
 
-    private var leftHeld = false
-    private var rightHeld = false
-    private var jumpPress = false
+    // Layout vars
+    private var padRadius = 0f
+    private var leftCX = 0f
+    private var rightCX = 0f
+    private var cy = 0f
+    // Put this inside TouchController class
+    fun layout(w: Int, h: Int) = onResize(w, h)
 
-    // Which pointer triggered the current jump (if any)
-    private var jumpPtrId: Int? = null
-    private var jumpHeldFrames = 0       // minimum hold window (~0.16 s @ 60 fps)
+    fun onResize(w: Int, h: Int) {
+        screenW = w; screenH = h
+        padRadius = min(screenW, screenH) * 0.12f // smaller equal pads
+        cy = screenH - padRadius - (screenH * 0.04f) // bottom padding
+        leftCX = padRadius + (screenW * 0.05f)
+        rightCX = screenW - padRadius - (screenW * 0.05f)
 
-    private enum class Region { NONE, LEFT, RIGHT }
-    private data class Ptr(var id: Int, var startX: Float, var startY: Float, var region: Region, var swipeDone: Boolean = false)
-    private val ptrs = HashMap<Int, Ptr>()
-
-    private var swipeMinPx = 60f
-    private val SWIPE_MAX_OFF_AXIS_RATIO = 2.5f
-
-    fun layout(screenW: Int, screenH: Int) {
-        val pad = screenH * 0.04f
-        val btn = screenH * 0.18f
-        leftRect.set(pad, screenH - btn - pad, pad + btn, screenH - pad)
-        rightRect.set(screenW - btn - pad, screenH - btn - pad, screenW - pad, screenH - pad)
-        swipeMinPx = screenH * 0.10f
+        label.textSize = screenH * 0.03f
+        arrows.textSize = screenH * 0.05f
     }
 
     fun onTouch(ev: MotionEvent): Boolean {
@@ -56,78 +58,67 @@ class TouchController {
                 val i = ev.actionIndex
                 val id = ev.getPointerId(i)
                 val x = ev.getX(i); val y = ev.getY(i)
-                val region = when {
-                    leftRect.contains(x, y)  -> Region.LEFT
-                    rightRect.contains(x, y) -> Region.RIGHT
-                    else -> Region.NONE
+                if (dist2(x, y, leftCX, cy) <= padRadius * padRadius && leftPointerId == null) {
+                    leftPointerId = id; jumpHeldInternal = true; jumpPressedOnce = true
+                } else if (dist2(x, y, rightCX, cy) <= padRadius * padRadius && rightPointerId == null) {
+                    rightPointerId = id; updateRightAxis(x)
                 }
-                ptrs[id] = Ptr(id, x, y, region)
-                recomputeHeld(ev)
-                return true
             }
             MotionEvent.ACTION_MOVE -> {
-                recomputeHeld(ev)
-                for (p in ptrs.values) {
-                    val i = ev.findPointerIndex(p.id)
-                    if (i < 0) continue
-                    val curX = ev.getX(i); val curY = ev.getY(i)
-                    val dy = curY - p.startY
-                    val dx = curX - p.startX
-                    val mostlyUp = abs(dy) > abs(dx) / SWIPE_MAX_OFF_AXIS_RATIO
-
-                    if (!p.swipeDone && p.region != Region.NONE && dy <= -swipeMinPx && mostlyUp) {
-                        jumpPress = true
-                        jumpPtrId = p.id
-                        jumpHeldFrames = maxOf(jumpHeldFrames, 10) // ~0.16s baseline hold
-                        p.swipeDone = true
-                        // optional: lateral impulses handled in your physics via left/right input
-                    }
+                rightPointerId?.let { rid ->
+                    val i = ev.findPointerIndex(rid)
+                    if (i >= 0) updateRightAxis(ev.getX(i))
                 }
-                // extend hold while swipe-origin pointer remains down
-                jumpPtrId?.let { id ->
-                    if (ptrs.containsKey(id)) jumpHeldFrames = maxOf(jumpHeldFrames, 1)
-                }
-                return true
             }
-            MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                val id = ev.getPointerId(ev.actionIndex)
-                val wasJumpPtr = (id == jumpPtrId)
-                ptrs.remove(id)
-                recomputeHeld(ev, ignoreActionIndex = true)
-                if (wasJumpPtr) {
-                    jumpPtrId = null
-                    // let jumpHeld decay naturally (no immediate zero) for a softer cut
-                }
-                return true
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_CANCEL -> {
+                val i = ev.actionIndex
+                val id = ev.getPointerId(i)
+                if (id == leftPointerId) { leftPointerId = null; jumpHeldInternal = false }
+                if (id == rightPointerId) { rightPointerId = null; axisX = 0f }
             }
         }
         return true
     }
 
-    private fun recomputeHeld(ev: MotionEvent, ignoreActionIndex: Boolean = false) {
-        var l = false; var r = false
-        for (i in 0 until ev.pointerCount) {
-            if (ignoreActionIndex && i == ev.actionIndex && ev.actionMasked != MotionEvent.ACTION_MOVE) continue
-            val x = ev.getX(i); val y = ev.getY(i)
-            if (leftRect.contains(x, y))  l = true
-            if (rightRect.contains(x, y)) r = true
-        }
-        leftHeld = l
-        rightHeld = r
+    private fun dist2(x: Float, y: Float, cx: Float, cy: Float): Float {
+        val dx = x - cx; val dy = y - cy
+        return dx * dx + dy * dy
     }
 
-    fun poll(): Actions {
-        val jumpHeldNow = jumpHeldFrames > 0 || (jumpPtrId?.let { ptrs.containsKey(it) } ?: false)
-        if (jumpHeldFrames > 0) jumpHeldFrames--
-        val a = Actions(leftHeld, rightHeld, jumpPress, jumpHeldNow)
-        jumpPress = false
-        return a
+    private fun updateRightAxis(x: Float) {
+        val raw = (x - rightCX) / padRadius
+        axisX = min(1f, max(-1f, raw))
+        if (abs(axisX) < 0.12f) axisX = 0f
+    }
+
+    fun poll(): PadState {
+        val left = axisX < -0.15f
+        val right = axisX > 0.15f
+        val out = PadState(left, right, jumpPressedOnce, jumpHeldInternal)
+        jumpPressedOnce = false
+        return out
     }
 
     fun drawOverlay(canvas: Canvas) {
-        canvas.drawRoundRect(leftRect, 18f, 18f, fill)
-        canvas.drawRoundRect(rightRect, 18f, 18f, fill)
-        canvas.drawRoundRect(leftRect, 18f, 18f, line)
-        canvas.drawRoundRect(rightRect, 18f, 18f, line)
+        if (screenW <= 0 || screenH <= 0) return
+
+        // --- Left circle (Jump) ---
+        fill.color = if (jumpHeldInternal) Color.argb(130, 255, 255, 255) else Color.argb(70, 255, 255, 255)
+        ring.color = Color.argb(160, 255, 255, 255)
+        canvas.drawCircle(leftCX, cy, padRadius, fill)
+        canvas.drawCircle(leftCX, cy, padRadius, ring)
+        label.color = Color.WHITE
+        canvas.drawText("JUMP", leftCX, cy + label.textSize * 0.35f, label)
+
+        // --- Right circle (Left/Right) ---
+        fill.color = Color.argb(70, 255, 255, 255)
+        ring.color = Color.argb(160, 255, 255, 255)
+        canvas.drawCircle(rightCX, cy, padRadius, fill)
+        canvas.drawCircle(rightCX, cy, padRadius, ring)
+
+        arrows.color = if (axisX < -0.15f) Color.YELLOW else Color.WHITE
+        canvas.drawText("←", rightCX - padRadius * 0.55f, cy + arrows.textSize * 0.35f, arrows)
+        arrows.color = if (axisX > 0.15f) Color.YELLOW else Color.WHITE
+        canvas.drawText("→", rightCX + padRadius * 0.55f, cy + arrows.textSize * 0.35f, arrows)
     }
 }
