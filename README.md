@@ -1,41 +1,43 @@
-# CircuitCity 2
+# CircuitSiege
 
-CircuitCity 2 is an Android game project. This repository contains the source code and resources for the game, which is developed using Kotlin and the Android SDK.
+CircuitSiege is an Android game project developed using Kotlin and the Android SDK.  
+This repository contains the complete source code, resources, and assets required to build and run the game.
 
 ## Features
-- Engaging gameplay centered around circuit-building mechanics
-- Multiple levels and challenges
-- Custom assets and graphics
+- 2D platformer with circuit-themed environments
+- Multiple levels with progressive difficulty
+- Enemy types including drones, turrets, and environmental traps
+- Power-ups and upgrades to support player progression
+- Custom graphics, animations, and HUD feedback
 - Optimized for Android devices
 
 ## Getting Started
 
 ### Prerequisites
-- Android Studio (latest recommended)
+- Android Studio (latest recommended version)
 - JDK 8 or higher
 - Gradle (included via wrapper)
 
 ### Building and Running
 1. Clone this repository:
    ```sh
-   git clone https://github.com/MIkeAndrew5523/CircuitCity_2.git
+   git clone https://github.com/MIkeAndrew5523/CircuitSiege.git
    ```
-2. Open the project in Android Studio.
-3. Let Gradle sync and build the project.
-4. Run the app on an emulator or physical device.
+2. Open the project in **Android Studio**.
+3. Allow Gradle to sync and build the project.
+4. Run the app on an emulator or physical Android device.
 
 ## Project Structure
-- `app/src/main/java/` - Main game source code
-- `app/src/main/res/` - Resources (layouts, drawables, etc.)
-- `app/src/main/assets/` - Game assets
-- `app/build.gradle.kts` - App-level Gradle build script
-- `build.gradle.kts` - Project-level Gradle build script
 
-## Contributing
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-## License
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+* `app/src/main/java/` — Core game source code
+* `app/src/main/res/` — Resources (layouts, drawables, UI elements)
+* `app/src/main/assets/` — Game assets (sprites, maps, level data)
+* `app/build.gradle.kts` — App-level Gradle build script
+* `build.gradle.kts` — Project-level Gradle build script
 
 ## Author
+
 Mike Andrew
+
+---
+
