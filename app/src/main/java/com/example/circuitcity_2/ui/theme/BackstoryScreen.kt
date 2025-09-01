@@ -6,13 +6,22 @@ import android.view.MotionEvent
 import com.example.circuitcity_2.engine.Screen
 import com.example.circuitcity_2.engine.ScreenManager
 
+/**
+ * Screen displaying the game's backstory before gameplay begins.
+ * Handles rendering of story text and user input to proceed to the next screen.
+ * @param context Android context for asset access
+ * @param sm ScreenManager for navigation
+ * @param nextFactory Factory function to create the next Screen
+ */
 class BackstoryScreen(
     private val context: Context,
     private val sm: ScreenManager,
     private val nextFactory: () -> Screen
 ) : Screen {
 
+    /** Paint object for drawing text. */
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
+    /** List of story lines loaded from assets. */
     private val lines: List<String> = context.assets.open("backstory.txt")
         .bufferedReader().use { it.readText().split("\n") }
 
@@ -21,6 +30,10 @@ class BackstoryScreen(
     private var activePointerId = -1
     private var downSeen = false
 
+    /**
+     * Updates the screen timer and enables input after a short delay.
+     * @param dtSec Time since last update in seconds
+     */
     override fun update(dtSec: Float) {
         if (!ready) {
             timeSinceShown += dtSec
@@ -28,6 +41,10 @@ class BackstoryScreen(
         }
     }
 
+    /**
+     * Renders the backstory text and hint to the canvas.
+     * @param canvas Canvas to draw on
+     */
     override fun render(canvas: Canvas) {
         val w = canvas.width.toFloat(); val h = canvas.height.toFloat()
         canvas.drawColor(Color.rgb(10,10,10))
@@ -45,6 +62,11 @@ class BackstoryScreen(
         canvas.drawText("Tap to Start Level 1", w/2f, h*0.92f, hint)
     }
 
+    /**
+     * Handles touch input to proceed to the next screen after the guard period.
+     * @param ev MotionEvent from the user
+     * @return true if the event was handled
+     */
     override fun onTouch(ev: MotionEvent): Boolean {
         if (!ready) return true
         when (ev.actionMasked) {

@@ -7,7 +7,12 @@ import kotlin.math.min
 import kotlin.math.sign
 import kotlin.math.floor
 
+/**
+ * Physics engine for CircuitCity 2. Handles player movement, gravity, jumping,
+ * collision detection, and response for platforming gameplay.
+ */
 object Physics {
+    /** Gravity constant applied to player. */
     const val GRAVITY = 28f
     private const val EXTRA_GRAV_UP_RELEASED = 42f
     private const val MAX_FALL_SPEED = 22f
@@ -17,6 +22,13 @@ object Physics {
     private const val RUN_DECEL = 65f
     private const val GROUND_OFFSET = 0.04f
 
+    /**
+     * Input state for physics step.
+     * @property left Whether left movement is pressed
+     * @property right Whether right movement is pressed
+     * @property jumpPressed Whether jump was pressed
+     * @property jumpHeld Whether jump is being held
+     */
     data class Input(
         val left: Boolean,
         val right: Boolean,
@@ -24,6 +36,13 @@ object Physics {
         val jumpHeld: Boolean
     )
 
+    /**
+     * Advances player physics by one frame, applying movement, gravity, and jump logic.
+     * @param level Current level
+     * @param p Player entity
+     * @param input Input state
+     * @param dt Time delta in seconds
+     */
     fun step(level: Level, p: Player, input: Input, dt: Float) {
         val want = when {
             input.left && !input.right -> -RUN_MAX
@@ -46,6 +65,13 @@ object Physics {
         moveAndCollide(p, level, dt)
     }
 
+    /**
+     * Smoothly approaches a target value from a current value by a delta.
+     * @param current Current value
+     * @param target Target value
+     * @param delta Maximum change allowed
+     * @return New value after approach
+     */
     private fun approach(current: Float, target: Float, delta: Float): Float {
         if (current == target) return current
         val dir = sign(target - current)
@@ -53,6 +79,12 @@ object Physics {
         return if ((dir > 0 && next > target) || (dir < 0 && next < target)) target else next
     }
 
+    /**
+     * Moves the player and handles collision with the level horizontally and vertically.
+     * @param p Player entity
+     * @param level Current level
+     * @param dt Time delta in seconds
+     */
     fun moveAndCollide(p: Player, level: Level, dt: Float) {
         // clamp fall
         p.vy = max(-999f, min(MAX_FALL_SPEED, p.vy))

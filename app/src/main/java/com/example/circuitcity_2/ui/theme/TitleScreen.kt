@@ -31,7 +31,7 @@ class TitleScreen(
         canvas.drawColor(Color.rgb(16,16,24))
         title.textSize = h * 0.09f
         hint.textSize  = h * 0.035f
-        canvas.drawText("CIRCUIT CITY", w/2f, h*0.42f, title)
+        canvas.drawText("CIRCUIT Siege", w/2f, h*0.42f, title)
         canvas.drawText("Tap to Continue", w/2f, h*0.58f, hint)
     }
 

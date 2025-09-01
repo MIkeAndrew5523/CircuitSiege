@@ -9,6 +9,13 @@ import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
 
+/**
+ * Represents the state of the touch controller pads for movement and jumping.
+ * @property left Whether left movement is pressed
+ * @property right Whether right movement is pressed
+ * @property jumpPressed Whether jump was pressed
+ * @property jumpHeld Whether jump is being held
+ */
 data class PadState(
     val left: Boolean,
     val right: Boolean,
@@ -16,6 +23,12 @@ data class PadState(
     val jumpHeld: Boolean
 )
 
+/**
+ * Handles touchscreen input for player movement and jumping in CircuitCity 2.
+ * Manages pad layout, touch events, axis calculation, and overlay rendering.
+ * @param screenW Screen width in pixels
+ * @param screenH Screen height in pixels
+ */
 class TouchController(
     private var screenW: Int = 0,
     private var screenH: Int = 0
@@ -38,9 +51,14 @@ class TouchController(
     private var leftCX = 0f
     private var rightCX = 0f
     private var cy = 0f
-    // Put this inside TouchController class
+    /** Updates pad layout based on screen size. */
     fun layout(w: Int, h: Int) = onResize(w, h)
 
+    /**
+     * Handles screen resize and recalculates pad positions and sizes.
+     * @param w New screen width
+     * @param h New screen height
+     */
     fun onResize(w: Int, h: Int) {
         screenW = w; screenH = h
         padRadius = min(screenW, screenH) * 0.12f // smaller equal pads
@@ -52,6 +70,11 @@ class TouchController(
         arrows.textSize = screenH * 0.05f
     }
 
+    /**
+     * Handles touch input events for movement and jumping.
+     * @param ev MotionEvent from the user
+     * @return true if the event was handled
+     */
     fun onTouch(ev: MotionEvent): Boolean {
         when (ev.actionMasked) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
@@ -80,17 +103,27 @@ class TouchController(
         return true
     }
 
+    /**
+     * Calculates squared distance between two points.
+     */
     private fun dist2(x: Float, y: Float, cx: Float, cy: Float): Float {
         val dx = x - cx; val dy = y - cy
         return dx * dx + dy * dy
     }
 
+    /**
+     * Updates the right pad axis based on touch position.
+     */
     private fun updateRightAxis(x: Float) {
         val raw = (x - rightCX) / padRadius
         axisX = min(1f, max(-1f, raw))
         if (abs(axisX) < 0.12f) axisX = 0f
     }
 
+    /**
+     * Polls the current pad state for movement and jumping.
+     * @return PadState representing current input
+     */
     fun poll(): PadState {
         val left = axisX < -0.15f
         val right = axisX > 0.15f
@@ -99,6 +132,10 @@ class TouchController(
         return out
     }
 
+    /**
+     * Draws the touch controller overlay (pads and labels) on the canvas.
+     * @param canvas Canvas to draw on
+     */
     fun drawOverlay(canvas: Canvas) {
         if (screenW <= 0 || screenH <= 0) return
 

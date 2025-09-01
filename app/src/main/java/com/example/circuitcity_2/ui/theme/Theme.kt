@@ -11,6 +11,11 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 
+/**
+ * Defines the color schemes and theme composable for CircuitCity 2 using Jetpack Compose Material3.
+ * Supports light, dark, and dynamic color schemes.
+ */
+
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,
     secondary = PurpleGrey80,
@@ -33,6 +38,12 @@ private val LightColorScheme = lightColorScheme(
     */
 )
 
+/**
+ * Applies the CircuitCity 2 theme to the given composable content.
+ * @param darkTheme Whether to use the dark theme
+ * @param dynamicColor Whether to use dynamic color (Android 12+)
+ * @param content Composable content to apply the theme to
+ */
 @Composable
 fun CircuitCity_2Theme(
     darkTheme: Boolean = isSystemInDarkTheme(),

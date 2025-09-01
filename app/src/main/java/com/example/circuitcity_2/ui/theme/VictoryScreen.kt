@@ -7,26 +7,44 @@ import android.view.MotionEvent
 import com.example.circuitcity_2.engine.Screen
 import com.example.circuitcity_2.engine.ScreenManager
 
+/**
+ * Screen displayed upon level completion, showing a victory message and handling user input to proceed.
+ * Supports auto-advance and delayed tap activation.
+ * @param sm ScreenManager for navigation
+ * @param makeNext Factory for next screen
+ * @param makeTitle Factory for title screen
+ * @param minShowSec Minimum seconds before tap is accepted
+ * @param autoAdvanceSec Seconds before auto-advance (optional)
+ */
 class VictoryScreen(
     private val sm: ScreenManager,
     private val makeNext: (() -> Screen)? = null,
     private val makeTitle: (() -> Screen)? = null,
-    private val minShowSec: Float = 2.0f,          // <-- require 2s before taps work
-    private val autoAdvanceSec: Float? = null      // <-- set e.g. 8.0f to auto-reset after 8s
+    private val minShowSec: Float = 2.0f,
+    private val autoAdvanceSec: Float? = null
 ) : Screen {
-
+    /** Paint for title text. */
     private val title = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.GREEN; textAlign = Paint.Align.CENTER }
+    /** Paint for hint text. */
     private val hint  = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.LTGRAY; textAlign = Paint.Align.CENTER }
 
     private var elapsed = 0f
     private var activePointerId = -1
     private var downSeen = false
 
+    /**
+     * Updates the timer and checks for auto-advance.
+     * @param dtSec Time since last update in seconds
+     */
     override fun update(dtSec: Float) {
         elapsed += dtSec
         autoAdvanceSec?.let { if (elapsed >= it) advance() }
     }
 
+    /**
+     * Renders the victory message and hint to the canvas.
+     * @param canvas Canvas to draw on
+     */
     override fun render(canvas: Canvas) {
         val w = canvas.width.toFloat(); val h = canvas.height.toFloat()
         canvas.drawColor(Color.BLACK)
@@ -43,6 +61,11 @@ class VictoryScreen(
         canvas.drawText(message, w/2f, h*0.58f, hint)
     }
 
+    /**
+     * Handles touch input to proceed to the next screen after the guard period.
+     * @param ev MotionEvent from the user
+     * @return true if the event was handled
+     */
     override fun onTouch(ev: MotionEvent): Boolean {
         if (elapsed < minShowSec) return true   // ignore carry-over touch from gameplay
 
@@ -68,6 +91,9 @@ class VictoryScreen(
         return true
     }
 
+    /**
+     * Advances to the next screen or title screen.
+     */
     private fun advance() {
         (makeNext ?: makeTitle)?.let { sm.set(it()) }
     }

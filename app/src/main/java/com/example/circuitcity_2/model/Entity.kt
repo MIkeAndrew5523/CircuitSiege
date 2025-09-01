@@ -1,5 +1,8 @@
 package com.example.circuitcity_2.model
 
+/**
+ *
+ */
 open class Entity(
     var x: Float,  // tile units
     var y: Float,  // tile units
